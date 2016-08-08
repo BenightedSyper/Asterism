@@ -80,6 +80,11 @@ function Page_OnLoad(){
 			//console.log(data[i].pos.x);
 		};
 	});
+	socket.on('ClientDeleteProjectiles', function(data){
+		for(var i = 0 ; i < data.length; i++){
+			delete projectiles[data[i].id];
+		};
+	});
 	socket.on('ClientUpdateProjectiles', function(data){
 		for(var i = 0 ; i < data.length; i++){
 			if(projectiles[data[i].id] == null){
@@ -91,12 +96,12 @@ function Page_OnLoad(){
 				data[i].id
 				);
 				//console.log(projectiles[data[i].id]);
-			}else{/*
+			}else{
 				if(projectiles[data[i].id].active){
 					projectiles[data[i].id].setPosition(new Vector2D(data[i].posX, data[i].posY));
 					projectiles[data[i].id].setDirection(new Vector2D(data[i].dirX, data[i].dirY));
 					projectiles[data[i].id].setHue(data[i].hue);
-				};*/
+				};
 			};
 			
 		};
@@ -187,7 +192,9 @@ function render(){
     };
     
     for(var i = projectiles.length - 1; i >= 0; i--){
-		projectiles[i].render(ctx, viewPort.getViewPort());
+		if(projectiles[i] != null){
+			projectiles[i].render(ctx, viewPort.getViewPort());
+		};
     };
 };
 function renderAllShips(_ctx){
@@ -259,11 +266,13 @@ function updateEntities(_dt){
         enemies[i].update(_dt);
     };
 	*/
+	/*
 	projectiles = projectiles.filter(function(value){return value.active;});
     for(var i = projectiles.length - 1; i >= 0; i--) {
 		projectiles[i].update(_dt);
     };
     projectiles = projectiles.filter(function(value){return value.active;});
+	*/
 };
 function checkCollisions(_dt){
     //check collisions between player ship and all enemies

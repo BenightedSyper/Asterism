@@ -40,6 +40,9 @@ Player.prototype.updatePosition = function(_dt){
 		PLAYER_LIST[this.id].ship.update(_dt);
 	};
 };
+function deleteProjectile(_id){
+	delete PROJECTILE_LIST[_id];
+};
 function disconnectSocket(_id){
 	delete SOCKET_LIST[_id];
 	delete PLAYER_LIST[_id];
@@ -132,6 +135,7 @@ setInterval(function(){
 		};
     };
 	var proPack = [];
+	var delPack = [];
 	for(var pro in PROJECTILE_LIST){
 		var proj = PROJECTILE_LIST[pro];
 		proj.update(dt);
@@ -147,18 +151,22 @@ setInterval(function(){
 				dirY: myDir.y,
 				hue: myHue
 			});
-		}/*else{
-			console.log("delete projectile " + pro);
-			delete PROJECTILE_LIST[pro];
-			console.log(PROJECTILE_LIST.length);
-		};*/
+		}else{
+			delPack.push({id:proj.id});
+			deleteProjectile(proj.id);
+			//console.log("delete projectile " + pro);
+			//socket.emit('ClientDeleteProjectile', proj.id);
+			//delete PROJECTILE_LIST[pro];
+			//console.log(PROJECTILE_LIST.length);
+		};
 	};
 	//console.log("filtering projectiles");
-	PROJECTILE_LIST = PROJECTILE_LIST.filter(function(value){return value.active;});
+	//PROJECTILE_LIST = PROJECTILE_LIST.filter(function(value){return value.active;});
 	//console.log(PROJECTILE_LIST.length);
 	for(var sock in SOCKET_LIST){
 		var socket = SOCKET_LIST[sock];
 		socket.emit('ClientUpdatePosition', pack);
+		socket.emit('ClientDeleteProjectiles', delPack);
 		socket.emit('ClientUpdateProjectiles',proPack);
 	};
 }, 1000/60);
