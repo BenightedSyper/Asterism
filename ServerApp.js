@@ -38,7 +38,6 @@ function Player(_id){
 };
 Player.prototype.updatePosition = function(_dt){
 	if(this.ship != null){//should be redundant b/c the check in update
-		//console.log(PLAYER_LIST[this.id].ship.getPosition());
 		PLAYER_LIST[this.id].ship.update(_dt);
 	};
 };
@@ -61,16 +60,12 @@ io.sockets.on('connection', function(socket){
     console.log('socket ' + socket.id + ' connected');
 	SOCKET_LIST[socket.id] = socket;
 	PLAYER_LIST[socket.id] = new Player(socket.id);
-	//PLAYER_LIST[socket.id].position.setVec(100,50);
-	//console.log("player position" + PLAYER_LIST[socket.id].position.x + ":" + PLAYER_LIST[socket.id].position.y);
 	console.log('currently connections: ' + TOTALSOCKETS);
 	
 	socket.on('disconnect',function(){
 		var idTemp = socket.id
 		console.log('socket ' + idTemp + ' disconnected');
 		disconnectSocket(socket.id);
-		//delete SOCKET_LIST[idTemp];
-		//delete PLAYER_LIST[idTemp];
 		TOTALSOCKETS--;
 		console.log('currently connections: ' + TOTALSOCKETS);
 	});
@@ -83,13 +78,10 @@ io.sockets.on('connection', function(socket){
 	socket.on('ServerMovementUpdate',function(data){
 		if(PLAYER_LIST[socket.id].ship != null){
 			PLAYER_LIST[socket.id].ship.setInputAccel(data.x, data.y);
-			//console.log(PLAYER_LIST[socket.id].ship.getInputAccel());
 		};
 	});
 	socket.on('ServerFireWeapon', function(data){
-		//console.log("Player " + socket.id + " has fired in the direction of (" + data.x + " " + data.y + ").");
 		PLAYER_LIST[socket.id].ship.fire(PROJECTILE_LIST, data.x, data.y, PROJNUM++);
-		//console.log(PROJECTILE_LIST.length);
 	});
 	socket.on('ServerLogIn', function(data){
 		//mysql lookup userName and check the hashed userPass
@@ -98,7 +90,6 @@ io.sockets.on('connection', function(socket){
 		//send ship information back to client under 'ClientSpawnShip'
 		if(data.userName == "test" && data.userPass == "password"){
 			PLAYER_LIST[socket.id].ship = new Ship(new Vector2D(50,50));
-			//console.log(PLAYER_LIST[socket.id].ship);
 			var temp = JSON.stringify({
 				position: new Vector2D(50,50),
 				entity: null,
@@ -114,15 +105,15 @@ io.sockets.on('connection', function(socket){
 function checkCollisions(_dt){
 	//check collisions between ships
 	//create collision objects for each pair of ships.
-	for(var i = 0; i < PLAYER_LIST.length; i++) {
-		for(var j = i; j < PLAYER_LIST.length - 1; j++){
-			if(PLAYER_LIST[i].ship != null && PLAYER_LIST[i+1].ship != null){
-				SHIP_COLLISIONS.push(new Collision(PLAYER_LIST[i].ship.entity, PLAYER_LIST[i + 1].ship.entity));
+	for(var i = 0; i < PLAYER_LIST.length - 1; i++) {
+		for(var j = i + 1; j < PLAYER_LIST.length; j++){
+			if((PLAYER_LIST[i] != null && PLAYER_LIST[j] != null) && 
+			   (PLAYER_LIST[i].ship != null && PLAYER_LIST[j].ship != null)){
+				SHIP_COLLISIONS.push(new Collision(PLAYER_LIST[i].ship.entity, PLAYER_LIST[j].ship.entity));
 			};
 		};
     };
 	SHIP_COLLISIONS = SHIP_COLLISIONS.filter(function(value){return value.intersection;});
-	//console.log(SHIP_COLLISIONS.length);
 	for(var i = 0; i < SHIP_COLLISIONS.length; i++) {
         SHIP_COLLISIONS[i].checkCollisionType();
     };
@@ -175,15 +166,8 @@ setInterval(function(){
 		}else{
 			delPack.push({id:proj.id});
 			deleteProjectile(proj.id);
-			//console.log("delete projectile " + pro);
-			//socket.emit('ClientDeleteProjectile', proj.id);
-			//delete PROJECTILE_LIST[pro];
-			//console.log(PROJECTILE_LIST.length);
 		};
 	};
-	//console.log("filtering projectiles");
-	//PROJECTILE_LIST = PROJECTILE_LIST.filter(function(value){return value.active;});
-	//console.log(PROJECTILE_LIST.length);
 	for(var sock in SOCKET_LIST){
 		var socket = SOCKET_LIST[sock];
 		socket.emit('ClientUpdatePosition', pack);
