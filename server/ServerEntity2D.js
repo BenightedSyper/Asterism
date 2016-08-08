@@ -66,6 +66,7 @@ Entity2D.prototype.getSegments = function(){
 	return this.segments;
 };
 Entity2D.checkAABBCollision = function(_ent1, _ent2){
+	//console.log(_ent1.position + " " + _ent2.position);
     return AABB.intersect(  new AABB(_ent1.aabb.position.add(_ent1.position), _ent1.aabb.hypotenuse), 
                             new AABB(_ent2.aabb.position.add(_ent2.position), _ent2.aabb.hypotenuse));
 };
