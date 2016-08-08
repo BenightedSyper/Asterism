@@ -4,6 +4,7 @@ var AABB = require('./server/ServerAABB');
 var ViewPort = require('./server/ServerViewPort');
 var Entity2D = require('./server/ServerEntity2D');
 var Ship = require('./server/ServerShip');
+var Collision = require('./server/ServerCollision');
 var express = require('express');
 var app = express();
 var serv = require('http').Server(app);
@@ -22,6 +23,7 @@ var PROJNUM = 0;
 var SOCKET_LIST = [];
 var PLAYER_LIST = [];
 var PROJECTILE_LIST = [];
+var SHIP_COLLISIONS = [];
 
 var d = new Date();
 var last = d.getTime();
@@ -109,12 +111,31 @@ io.sockets.on('connection', function(socket){
 		};
 	});
 });
+function checkCollisions(_dt){
+	//check collisions between ships
+	//create collision objects for each pair of ships.
+	for(var i = 0; i < PLAYER_LIST.length; i++) {
+		for(var j = i; j < PLAYER_LIST.length - 1; j++){
+			if(PLAYER_LIST[i].ship != null && PLAYER_LIST[i+1].ship != null){
+				SHIP_COLLISIONS.push(new Collision(PLAYER_LIST[i].ship.entity, PLAYER_LIST[i + 1].ship.entity));
+			};
+		};
+    };
+	SHIP_COLLISIONS = SHIP_COLLISIONS.filter(function(value){return value.intersection;});
+	//console.log(SHIP_COLLISIONS.length);
+	for(var i = 0; i < SHIP_COLLISIONS.length; i++) {
+        SHIP_COLLISIONS[i].checkCollisionType();
+    };
+	SHIP_COLLISIONS = [];
+};
 setInterval(function(){
 	d = new Date();
 	var curr = d.getTime();
 	var dt = (curr - last)/ 1000.0;
 	//console.log(dt);
 	last = curr;
+	
+	checkCollisions(dt);
 	
 	var pack = [];
 	for(var play in PLAYER_LIST){
