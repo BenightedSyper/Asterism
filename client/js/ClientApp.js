@@ -22,6 +22,9 @@ var shotRate = 150;
 var allShips = [];
 var enemyCollisions = [];
 var projectileCollisions = [];
+var StarPar;
+
+var DEBUGLINE;
 
 // A cross-browser requestAnimationFrame
 // See https://hacks.mozilla.org/2011/08/animating-with-javascript-from-setinterval-to-requestanimationframe/
@@ -116,16 +119,16 @@ function Page_OnLoad(){
 		userInfo:1
 	});
 	socket.on('ClientSpawnShip',function(data){
-		//console.log(data.id);
-		//console.log(JSON.parse(data));
 		Player.id = data.id
 		PlayerShip = Ship.fromJSON(JSON.parse(data.ship));
-		//socket.emit('ServerDebug',"" + PlayerShip.getHue());
+		viewPort.follow(PlayerShip.entity,canvasWidth/8,canvasHeight/8);
 	});
 	socket.on('ClientDisconnect', function(data){
 		//console.log(data);
 		delete allShips[data];
 	});
+	
+	StarPar = new StarParalax(new Vector2D(0,0), 0);
     //PlayerShip = new Ship(new Vector2D(canvas.width/2, canvas.height/2));
     //PlayerShip.entity.collisionType = 1;
     //PlayerShip.entity.calcAABB(); 
@@ -168,6 +171,7 @@ function update(dt){
     handleInput(dt);
     checkCollisions(dt);
     updateEntities(dt);
+	viewPort.update(dt);
 };
 
 function render(){
@@ -177,6 +181,8 @@ function render(){
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.restore();
 
+	StarPar.render(ctx, viewPort.getViewPort());
+	
     //viewPort.render(ctx);
     //lineSeg.render(ctx, viewPort.getViewPort());
     if(PlayerShip != null){
@@ -196,6 +202,9 @@ function render(){
 			projectiles[i].render(ctx, viewPort.getViewPort());
 		};
     };
+	if(DEBUGLINE != null){
+		DEBUGLINE.render(ctx, viewPort.getViewPort());
+	};
 };
 function renderAllShips(_ctx){
 	//console.log(allShips.length);
@@ -245,10 +254,13 @@ function mouseMoveEvent(_evt){
 function mouseDownEvent(_evt){
     if(_evt.button == 0){//left mouse = 0, middle = 1, right = 2;
 		//emit to server with direction of fire
-		var tarVec = PlayerShip.getPosition();
-		tarVec.add(viewPort.getPosition());
-		tarVec = mousePosition.subtract(tarVec);
-		socket.emit('ServerFireWeapon', { x: tarVec.x, y: tarVec.y});
+		// var tarVec = PlayerShip.getPosition();
+		// tarVec = new Vector2D(tarVec.x, tarVec.y)
+		// tarVec.addEquals(viewPort.getPosition());
+		// tarVec = mousePosition.subtract(tarVec);
+		tarVec = new LineSegment(PlayerShip.getPosition(),mousePosition.add(viewPort.getPosition()), 0);
+		socket.emit('ServerFireWeapon', { x: tarVec.vector.x, y: tarVec.vector.y});
+		//DEBUGLINE = new LineSegment(PlayerShip.getPosition(),mousePosition.add(viewPort.getPosition()), 0);
 		//PlayerShip.fire(projectiles, viewPort.getViewPort());
         //lineSeg.hue = Math.floor((Math.random() * 360) + 1);
     };

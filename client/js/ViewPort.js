@@ -30,10 +30,10 @@ ViewPort.prototype.follow = function(_gameObject, _xDeadZone, _yDeadZone){
 ViewPort.prototype.getFollow = function(){
 	return this.followed;
 }
-ViewPort.prototype.update = function(){
+ViewPort.prototype.update = function(_dt){
 	//keep following the player (or other desired object)
 	
-	if(this.followed != null){
+	if(this.targetObject != null){
 		this.followed = this.targetObject.position;
 		//console.log("" + this.followed.x + " - " + this.viewPortAABB.x + " + " + this.xDeadZone + " > " + this.viewPortAABB.getWidth());
 		//moves camera on horizontal axis based on followed object position
