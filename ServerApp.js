@@ -1,13 +1,16 @@
-var Vector2D = require('./server/Vector2D');
-var Circle = require('./server/ServerCircle');
-var AABB = require('./server/ServerAABB');
-var ViewPort = require('./server/ServerViewPort');
-var Entity2D = require('./server/ServerEntity2D');
-var Ship = require('./server/ServerShip');
-var Collision = require('./server/ServerCollision');
-var express = require('express');
-var app = express();
-var serv = require('http').Server(app);
+const Vector2D = require('./server/Vector2D');
+const Circle = require('./server/ServerCircle');
+const AABB = require('./server/ServerAABB');
+const ViewPort = require('./server/ServerViewPort');
+const Entity2D = require('./server/ServerEntity2D');
+const Ship = require('./server/ServerShip');
+const Collision = require('./server/ServerCollision');
+const StarParallax = require('./server/ServerStarParallax');
+const CelestialObject = require('./server/ServerCelestialObject');
+const express = require('express');
+const fs = require('fs');
+const app = express();
+const serv = require('http').Server(app);
 
 app.get('/', function(req, res){
     res.sendFile(__dirname + '/client/index.html');
@@ -17,6 +20,8 @@ app.use('/client', express.static(__dirname + '/client'));
 serv.listen(666);
 console.log("The Server has been Started.");
 
+const SECTOR_FILE_PATH = './server/Sectors/';
+
 var SOCKETID = 0;
 var TOTALSOCKETS = 0;
 var PROJNUM = 0;
@@ -24,6 +29,7 @@ var SOCKET_LIST = [];
 var PLAYER_LIST = [];
 var PROJECTILE_LIST = [];
 var SHIP_COLLISIONS = [];
+var SECTORS = [];
 
 var d = new Date();
 var last = d.getTime();
@@ -95,6 +101,8 @@ io.sockets.on('connection', function(socket){
 				entity: null,
 				hue: PLAYER_LIST[socket.id].ship.getHue()
 			});
+			checkForSector(0,0, socket);
+			//var stars = JSON.stringify();
 			socket.emit('ClientSpawnShip', {
 				id: socket.id, 
 				ship: temp
@@ -118,6 +126,56 @@ function checkCollisions(_dt){
         SHIP_COLLISIONS[i].checkCollisionType();
     };
 	SHIP_COLLISIONS = [];
+};
+function generateUnique(_x, _y){
+	var phi = _x >= 0 ? _x * 2 : (_x * -2) - 1;
+	var psy = _y >= 0 ? _y * 2 : (_y * -2) - 1;
+	return 0.5 * (phi + psy) * (phi + psy + 1) + psy;
+};
+function checkForSector(_x, _y, _sock){
+	var currFile = SECTOR_FILE_PATH + generateUnique(_x, _y) +".txt";
+	fs.access(currFile, (err) => {
+		if(!err){//exists
+			fs.readFile(currFile, 'utf8',(err, data) => {
+				if(!err){
+					SECTORS[generateUnique(_x, _y)] = {stars: StarParallax.fromJSON(JSON.parse(data)), celobj: CelestialObject.fromJSON(JSON.parse(data))};
+					_sock.emit('ClientUpdateSectorStars',{ x : _x,
+														   y : _y,
+														   stars: data });
+					//console.log(SECTORS[generateUnique(_x, _y)]);
+					_sock.emit('ClientUpdateCelestialObjects', SECTORS[generateUnique(_x, _y)].celobj);
+				}else{
+					throw err;
+				};
+			});
+		}else{//does not exist
+			generateSector(_x, _y);
+			fs.writeFile(currFile, JSON.stringify(getSector(_x, _y)), (err) => {
+				if(err){
+					throw err;
+				};
+			});
+			checkForSector(_x,_y,_sock);
+		};
+	});
+};
+function getSector(_x, _y){
+	return SECTORS[generateUnique(_x, _y)];
+};
+function generateSector(_x, _y){
+	var uni = generateUnique(_x, _y);
+	console.log("generating sector "+uni+" ("+_x+":"+_y+")");
+	SECTORS[uni] = {stars: new StarParallax(new Vector2D(_x,_y), uni),
+					celobj: [] };
+	SECTORS[uni].stars.calculateStars();
+	if(_x == 0 && _y == 0){
+		SECTORS[uni].celobj.push(new CelestialObject(new Vector2D(200,200)));
+		//add objects to build the field
+		//new CelestrialObject();
+		//array of entities
+		//wall wall wall wall wall wall ball
+	};
+	//console.log(SECTORS[uni]);
 };
 setInterval(function(){
 	d = new Date();

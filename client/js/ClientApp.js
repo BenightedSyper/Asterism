@@ -23,6 +23,7 @@ var allShips = [];
 var enemyCollisions = [];
 var projectileCollisions = [];
 var StarPar;
+var SECTORS = [];
 
 var DEBUGLINE;
 
@@ -88,6 +89,15 @@ function Page_OnLoad(){
 			delete projectiles[data[i].id];
 		};
 	});
+	socket.on('ClientUpdateSectorStars', function(data){
+		//console.log("sector stars");
+		//console.log(data.stars);
+		StarPar = StarParallax.fromJSON(JSON.parse(data.stars));
+	});
+	socket.on('ClientUpdateCelestialObjects', function(data){
+		console.log(data);
+		//CelesObjs = CelestialObject.fromJSON(JSON.parse(data));
+	});
 	socket.on('ClientUpdateProjectiles', function(data){
 		for(var i = 0 ; i < data.length; i++){
 			if(projectiles[data[i].id] == null){
@@ -128,7 +138,7 @@ function Page_OnLoad(){
 		delete allShips[data];
 	});
 	
-	StarPar = new StarParalax(new Vector2D(0,0), 0);
+	//StarPar = new StarParallax(new Vector2D(0,0), 0);
     //PlayerShip = new Ship(new Vector2D(canvas.width/2, canvas.height/2));
     //PlayerShip.entity.collisionType = 1;
     //PlayerShip.entity.calcAABB(); 
@@ -181,35 +191,31 @@ function render(){
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.restore();
 
-	StarPar.render(ctx, viewPort.getViewPort());
-	
-    //viewPort.render(ctx);
-    //lineSeg.render(ctx, viewPort.getViewPort());
-    if(PlayerShip != null){
-		PlayerShip.render(ctx, viewPort.getViewPort());
+	if(StarPar != null){//needs filtering by viewport
+		StarPar.render(ctx, viewPort.getViewPort());
 	};
-	renderAllShips(ctx);
 	
-
-    //wallEnt.render(ctx, viewPort.getViewPort());
-
-    for(var i = enemies.length - 1; i >= 0; i--){
-        //enemies[i].render(ctx, viewPort.getViewPort());
-    };
-    
-    for(var i = projectiles.length - 1; i >= 0; i--){
+	for(var i = projectiles.length - 1; i >= 0; i--){
 		if(projectiles[i] != null){
 			projectiles[i].render(ctx, viewPort.getViewPort());
 		};
     };
+	
+    if(PlayerShip != null){
+		PlayerShip.render(ctx, viewPort.getViewPort());
+	};
+	renderAllShips(ctx);
+
+    //for(var i = enemies.length - 1; i >= 0; i--){
+        //enemies[i].render(ctx, viewPort.getViewPort());
+    //};
+    
 	if(DEBUGLINE != null){
 		DEBUGLINE.render(ctx, viewPort.getViewPort());
 	};
 };
 function renderAllShips(_ctx){
-	//console.log(allShips.length);
 	allShips.forEach(function(_el, _in, _ar){
-		//console.log(_el);
 		_el.render(_ctx, viewPort.getViewPort());
 	});
 };

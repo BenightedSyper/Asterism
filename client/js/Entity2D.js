@@ -11,6 +11,14 @@ function Entity2D(_colType){
     this.restitution = 1;
     this.mass = 1;
     this.drag = 0.98;
+	this.tags = [];
+	this.collisionTags = [];
+};
+Entity2D.prototype.addCollisionTag = function(_tag){
+	this.collisionTags.push(_tag);
+};
+Entity2D.prototype.addTag = function(_tag){
+	this.tags.push(_tag);
 };
 Entity2D.prototype.getHue = function(){
 	return this.segments[0].hue;
@@ -71,6 +79,7 @@ Entity2D.prototype.render = function(_ctx, _viewPort){
     _ctx.restore();
 
     //collision box draw for debug
+	/*
     _ctx.save();
     _ctx.strokeStyle = "hsl(0,100%,100%)";
     _ctx.beginPath();
@@ -100,6 +109,7 @@ Entity2D.prototype.render = function(_ctx, _viewPort){
     };
     _ctx.stroke();
     _ctx.restore();
+	*/
 };
 Entity2D.prototype.update = function(_dt){
     this.position.addEquals(this.velocity);

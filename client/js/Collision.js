@@ -1,7 +1,9 @@
 function Collision (_one, _two){
     this.entityOne = _one;
     this.entityTwo = _two;
-    this.checkCollisionAABB();
+	if(this.checkCollisionTags()){
+		this.checkCollisionAABB();
+	};
 };
 Collision.prototype.entityOne = null;
 Collision.prototype.entityTwo = null;
@@ -10,6 +12,35 @@ Collision.prototype.normal = Vector2D.zero;
 Collision.prototype.aabbIntersect = false;
 Collision.prototype.intersection = false;
 Collision.prototype.collisionPoint;
+Collision.prototype.checkCollisionTags = function(){
+	var first = false;
+	for(var i = 0; i < this.entityOne.tags.length; i++){
+		for(var j = 0; j < this.entityTwo.collisionTags.length; j++){
+			first = first || 
+			(this.entityOne.tags[i] == this.entityTwo.collisionTags[j]);
+		};
+	};
+	// this.entityOne.tags.forEach(function(_fx){
+		// this.entityTwo.collisionTags.forEach(function(_fy){
+			// first = first || (_fx == _fy);
+		// });
+	// });
+	if(first){ return true; };
+	var second = false;
+	for(var i = 0; i < this.entityTwo.tags.length; i++){
+		for(var j = 0; j < this.entityOne.collisionTags.length; j++){
+			first = first || 
+			(this.entityTwo.tags[i] == this.entityOne.collisionTags[j]);
+		};
+	};
+	// this.entityTwo.tags.forEach(function(_sx){
+		// this.entityOne.collisionTags.forEach(function(_sy){
+			// second = second || (_sx == _sy);
+		// });
+	// });
+	if(second){ return true; };
+	return false;
+};
 Collision.prototype.checkCollisionAABB = function(){
     this.aabbIntersect = Entity2D.checkAABBCollision(this.entityOne,this.entityTwo);
     //this.checkAABBvsAABBIntersection();
