@@ -14,6 +14,33 @@ function Entity2D(_colType){
 	this.tags = [];
 	this.collisionTags = [];
 };
+Entity2D.fromJSON = function(_json){
+	//console.log(_json);
+	var e = new Entity2D(_json.collisionType);
+	e.position = new Vector2D(_json.position.x, _json.position.y);
+	e.velocity = new Vector2D(_json.velocity.x, _json.velocity.y);
+	e.acceleration = new Vector2D(_json.acceleration.x, _json.acceleration.y);
+	e.direction = new Vector2D(_json.direction.x, _json.direction.y);
+	e.rotationVelocity = _json.rotationVelocity;
+	for(var i = 0; i < _json.points.length; i++){
+		e.points.push(new Vector2D(_json.points[i].x, _json.points[i].y));
+	};
+	for(var i = 0; i < _json.segments.length; i++){
+		e.segments.push(new LineSegment(new Vector2D(_json.segments[i].to.x,   _json.segments[i].to.y), 
+										new Vector2D(_json.segments[i].from.x, _json.segments[i].from.y)));
+	};
+	e.calcAABB();
+	e.restitution = _json.restitution;
+	e.mass = _json.mass;
+	e.drag = _json.drag;
+	for(var i = 0; i < _json.tags.length; i++){
+		e.tags.push(_json.tags[i]);
+	};
+	for(var i = 0; i < _json.collisionTags.length; i++){
+		e.collisionTags.push(_json.collisionTags[i]);
+	};
+	return e;
+};
 Entity2D.prototype.addCollisionTag = function(_tag){
 	this.collisionTags.push(_tag);
 };

@@ -24,6 +24,7 @@ var enemyCollisions = [];
 var projectileCollisions = [];
 var StarPar;
 var SECTORS = [];
+CelesObjs = [];
 
 var DEBUGLINE;
 
@@ -94,9 +95,11 @@ function Page_OnLoad(){
 		//console.log(data.stars);
 		StarPar = StarParallax.fromJSON(JSON.parse(data.stars));
 	});
-	socket.on('ClientUpdateCelestialObjects', function(data){
-		console.log(data);
-		//CelesObjs = CelestialObject.fromJSON(JSON.parse(data));
+	socket.on('ClientUpdateCelestialObjects', function(data){//TODO currently doesnt use JSON
+		//console.log(data);
+		//for(var i = 0; i < data.length; i++){
+			CelesObjs = CelestialObject.fromJSON(/*JSON.parse(*/data/*)*/);
+		//};
 	});
 	socket.on('ClientUpdateProjectiles', function(data){
 		for(var i = 0 ; i < data.length; i++){
@@ -194,7 +197,9 @@ function render(){
 	if(StarPar != null){//needs filtering by viewport
 		StarPar.render(ctx, viewPort.getViewPort());
 	};
-	
+	for(var i = 0; i < CelesObjs.length; i++){
+		CelesObjs[i].render(ctx, viewPort.getViewPort());
+	};
 	for(var i = projectiles.length - 1; i >= 0; i--){
 		if(projectiles[i] != null){
 			projectiles[i].render(ctx, viewPort.getViewPort());

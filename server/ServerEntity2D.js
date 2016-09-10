@@ -19,7 +19,7 @@ var Entity2D = function(_colType){
 	this.collisionTags = [];
 };
 Entity2D.fromJSON = function(_json){
-	console.log(_json);
+	//console.log(_json);
 	var e = new Entity2D(_json.collisionType);
 	e.position = new Vector2D(_json.position.x, _json.position.y);
 	e.velocity = new Vector2D(_json.velocity.x, _json.velocity.y);

@@ -143,7 +143,7 @@ function checkForSector(_x, _y, _sock){
 														   y : _y,
 														   stars: data });
 					//console.log(SECTORS[generateUnique(_x, _y)]);
-					_sock.emit('ClientUpdateCelestialObjects', SECTORS[generateUnique(_x, _y)].celobj);
+					_sock.emit('ClientUpdateCelestialObjects', SECTORS[generateUnique(_x, _y)].celobj);//TODO needs to send with JSON
 				}else{
 					throw err;
 				};
