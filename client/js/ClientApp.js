@@ -24,7 +24,7 @@ var enemyCollisions = [];
 var projectileCollisions = [];
 var StarPar;
 var SECTORS = [];
-CelesObjs = [];
+var CelesObjs = [];
 
 var DEBUGLINE;
 
@@ -59,6 +59,16 @@ function Page_OnLoad(){
     document.body.appendChild(canvas);
 
 	socket = io();
+	socket.emit('ServerLogIn',{
+		userName:"test",
+		userPass:"password",
+		userInfo:1
+	});
+	socket.on('ClientSpawnShip',function(data){
+		Player.id = data.id
+		PlayerShip = Ship.fromJSON(JSON.parse(data.ship));
+		viewPort.follow(PlayerShip.entity,canvasWidth/8,canvasHeight/8);
+	});
 	socket.on('ClientUpdatePosition', function(data){
 		for(var i = 0 ; i < data.length; i++){
 			//console.log(data[i].id);
@@ -68,6 +78,9 @@ function Page_OnLoad(){
 				PlayerShip.setPosition(new Vector2D(data[i].posX, data[i].posY));
 				PlayerShip.setDirection(new Vector2D(data[i].dirX, data[i].dirY));
 				PlayerShip.setHue(data[i].hue);
+				Player.mySector = data[i].sector;
+				//Player.localSectors = data[i].localSectors;
+				Player.near = data[i].near;
 			}else{
 				//other ships
 				if(allShips[data[i].id] == null){
@@ -85,20 +98,39 @@ function Page_OnLoad(){
 			//console.log(data[i].pos.x);
 		};
 	});
+	socket.on('ClientUpdateSectors', function(data){
+		console.log(data);
+		Player.localSectors = data;
+	});
 	socket.on('ClientDeleteProjectiles', function(data){
 		for(var i = 0 ; i < data.length; i++){
 			delete projectiles[data[i].id];
 		};
 	});
 	socket.on('ClientUpdateSectorStars', function(data){
-		//console.log("sector stars");
-		//console.log(data.stars);
-		StarPar = StarParallax.fromJSON(JSON.parse(data.stars));
+		//console.log("sector StarPar");
+		//console.log(data.StarPar);
+		if(SECTORS[data.uni] != null){
+			SECTORS[data.uni].StarPar = StarParallax.fromJSON(JSON.parse(data.StarPar));
+		}else{
+			SECTORS[data.uni] = {
+			StarPar : StarParallax.fromJSON(JSON.parse(data.StarPar))
+			};
+		}
+		//StarPar = StarParallax.fromJSON(JSON.parse(data.StarPar));
 	});
 	socket.on('ClientUpdateCelestialObjects', function(data){//TODO currently doesnt use JSON
 		//console.log(data);
+		if(SECTORS[data.uni] != null){
+			SECTORS[data.uni].CelesObjs = CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/);
+		}else{
+			SECTORS[data.uni] = {
+			CelesObjs : CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/)
+			};
+		}
+		//console.log(SECTORS[data.uni]);
 		//for(var i = 0; i < data.length; i++){
-			CelesObjs = CelestialObject.fromJSON(/*JSON.parse(*/data/*)*/);
+			//CelesObjs = CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/);
 		//};
 	});
 	socket.on('ClientUpdateProjectiles', function(data){
@@ -126,16 +158,8 @@ function Page_OnLoad(){
 	socket.on('ClientDebug',function(data){
 			console.log(data);
 	});
-	socket.emit('ServerLogIn',{
-		userName:"test",
-		userPass:"password",
-		userInfo:1
-	});
-	socket.on('ClientSpawnShip',function(data){
-		Player.id = data.id
-		PlayerShip = Ship.fromJSON(JSON.parse(data.ship));
-		viewPort.follow(PlayerShip.entity,canvasWidth/8,canvasHeight/8);
-	});
+	
+	
 	socket.on('ClientDisconnect', function(data){
 		//console.log(data);
 		delete allShips[data];
@@ -194,12 +218,33 @@ function render(){
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.restore();
 
-	if(StarPar != null){//needs filtering by viewport
+	
+	if(Player.mySector != null){
+		//console.log(SECTORS);
+		SECTORS[Player.mySector].StarPar.render(ctx, viewPort.getViewPort());
+		for(var i = 0; i < SECTORS[Player.mySector].CelesObjs.length; i++){
+			SECTORS[Player.mySector].CelesObjs[i].render(ctx, viewPort.getViewPort());
+		}
+	};
+	/*
+	if(Player.localSectors != null){
+		
+		//console.log(SECTORS);
+		//SECTORS[Player.mySector].StarPar.render(ctx, viewPort.getViewPort());
+		//for(var i = 0; i < SECTORS[Player.mySector].CelesObjs.length; i++){
+		//	SECTORS[Player.mySector].CelesObjs[i].render(ctx, viewPort.getViewPort());
+		//}
+	};
+	*/
+	
+	/*if(StarPar != null){//needs filtering by viewport
 		StarPar.render(ctx, viewPort.getViewPort());
-	};
-	for(var i = 0; i < CelesObjs.length; i++){
+	};*/
+	
+	/*for(var i = 0; i < CelesObjs.length; i++){
 		CelesObjs[i].render(ctx, viewPort.getViewPort());
-	};
+	};*/
+	
 	for(var i = projectiles.length - 1; i >= 0; i--){
 		if(projectiles[i] != null){
 			projectiles[i].render(ctx, viewPort.getViewPort());

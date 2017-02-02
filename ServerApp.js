@@ -101,7 +101,12 @@ io.sockets.on('connection', function(socket){
 				entity: null,
 				hue: PLAYER_LIST[socket.id].ship.getHue()
 			});
-			checkForSector(0,0, socket);
+			
+			var ShipPos = PLAYER_LIST[socket.id].ship.getPosition();
+			
+			checkForSectorCluster(Math.floor(ShipPos.x / 1000), Math.floor(ShipPos.y / 1000), socket);
+			//checkForSector(Math.floor(ShipPos.x / 1000), Math.floor(ShipPos.y / 1000), socket); 
+			//send multiple sectors, 9 in total
 			//var stars = JSON.stringify();
 			socket.emit('ClientSpawnShip', {
 				id: socket.id, 
@@ -127,75 +132,133 @@ function checkCollisions(_dt){
     };
 	SHIP_COLLISIONS = [];
 };
+function checkSectors(_dt){
+	for(var i = 0; i < SECTORS.length; i++){
+		//update all celestial objects in the sector
+		//console.log(SECTORS[i]);
+		if(SECTORS[i] != null){
+			for(var j = 0; j < SECTORS[i].celobj.length; j++){	
+				SECTORS[i].celobj[j].update(_dt);
+			};
+		};
+	};
+};
 function generateUnique(_x, _y){
 	var phi = _x >= 0 ? _x * 2 : (_x * -2) - 1;
 	var psy = _y >= 0 ? _y * 2 : (_y * -2) - 1;
 	return 0.5 * (phi + psy) * (phi + psy + 1) + psy;
 };
-function checkForSector(_x, _y, _sock){
+function checkForSectorCluster(_x, _y, _s){
+	console.log("checking for sector cluster: (" + _x + "," + _y +")");
+	//check for sector and all sectors around 
+	checkForSector(_x + 0, _y + 0, _s, SECTORS); //current Sector
+	checkForSector(_x + 0, _y + 1, _s, SECTORS); //North sector
+	checkForSector(_x + 1, _y + 1, _s, SECTORS); //North East Sector
+	checkForSector(_x + 1, _y + 0, _s, SECTORS); //East Sector
+	checkForSector(_x + 1, _y - 1, _s, SECTORS); //South East Sector
+	checkForSector(_x + 0, _y - 1, _s, SECTORS); //South Sector
+	checkForSector(_x - 1, _y - 1, _s, SECTORS); //South West Sector
+	checkForSector(_x - 1, _y + 0, _s, SECTORS); //West Sector
+	checkForSector(_x - 1, _y + 1, _s, SECTORS); //North West Sector
+};
+function checkForSector(_x, _y, _sock, _arr){
 	var currFile = SECTOR_FILE_PATH + generateUnique(_x, _y) +".txt";
 	fs.access(currFile, (err) => {
 		if(!err){//exists
 			fs.readFile(currFile, 'utf8',(err, data) => {
+				//console.log(data);
 				if(!err){
-					SECTORS[generateUnique(_x, _y)] = {stars: StarParallax.fromJSON(JSON.parse(data)), celobj: CelestialObject.fromJSON(JSON.parse(data))};
-					_sock.emit('ClientUpdateSectorStars',{ x : _x,
+					_arr[generateUnique(_x, _y)] = {StarPar: StarParallax.fromJSON(JSON.parse(data)), celobj: CelestialObject.fromJSON(JSON.parse(data))};
+					_sock.emit('ClientUpdateSectorStars',{ uni : generateUnique(_x, _y),
+														   near: 0,
+														   x : _x,
 														   y : _y,
-														   stars: data });
-					//console.log(SECTORS[generateUnique(_x, _y)]);
-					_sock.emit('ClientUpdateCelestialObjects', SECTORS[generateUnique(_x, _y)].celobj);//TODO needs to send with JSON
+														   StarPar: data }); //TODO needs to send with JSON
+					//console.log(_arr[generateUnique(_x, _y)]);
+					
+					//add to array to send as packet
+					_sock.emit('ClientUpdateCelestialObjects', {uni : generateUnique(_x, _y),
+															    sector : _arr[generateUnique(_x, _y)].celobj});//TODO needs to send with JSON
 				}else{
+					console.log("there was an error reading " + currFile);
 					throw err;
 				};
 			});
+			console.log(SECTORS[generateUnique(_x, _y)].StarPar);
 		}else{//does not exist
 			generateSector(_x, _y);
 			fs.writeFile(currFile, JSON.stringify(getSector(_x, _y)), (err) => {
 				if(err){
+					console.log("there was an error writing sector " + currFile);
 					throw err;
 				};
 			});
-			checkForSector(_x,_y,_sock);
+			checkForSector(_x,_y,_sock,_arr);
 		};
 	});
 };
 function getSector(_x, _y){
-	return SECTORS[generateUnique(_x, _y)];
+	//if(SECTORS[generateUnique(_x, _y)] != null){
+		//console.log(SECTORS[generateUnique(_x, _y)]);
+		return SECTORS[generateUnique(_x, _y)];
+	//}
+	//return null;
 };
 function generateSector(_x, _y){
 	var uni = generateUnique(_x, _y);
-	console.log("generating sector "+uni+" ("+_x+":"+_y+")");
-	SECTORS[uni] = {stars: new StarParallax(new Vector2D(_x,_y), uni),
-					celobj: [] };
-	SECTORS[uni].stars.calculateStars();
+	console.log("generating sector " +uni+ ": ("+_x+","+_y+")");
+	SECTORS[uni] = {StarPar: new StarParallax(new Vector2D(_x,_y), uni),
+					celobj: [],
+					hasChanged: true };
+	SECTORS[uni].StarPar.calculateStars();
 	if(_x == 0 && _y == 0){
 		SECTORS[uni].celobj.push(new CelestialObject(new Vector2D(200,200)));
-		//add objects to build the field
-		//new CelestrialObject();
-		//array of entities
-		//wall wall wall wall wall wall ball
+		SECTORS[uni].celobj[0].setOrbit(100,10000,0);
 	};
 	//console.log(SECTORS[uni]);
 };
+function getLocalSectors(_secX, _secY){
+	var secs = [];
+	secs.push(getSector(_secX - 1, _secY - 1));
+	secs.push(getSector(_secX - 1, _secY + 0));
+	secs.push(getSector(_secX - 1, _secY + 1));
+	secs.push(getSector(_secX + 0, _secY - 1));
+	secs.push(getSector(_secX + 0, _secY + 0));
+	secs.push(getSector(_secX + 0, _secY + 1));
+	secs.push(getSector(_secX + 1, _secY - 1));
+	secs.push(getSector(_secX + 1, _secY + 0));
+	secs.push(getSector(_secX + 1, _secY + 1));
+	//console.log(secs);
+	return secs;
+};
 setInterval(function(){
 	d = new Date();
-	var curr = d.getTime();
+	var curr = d.getTime(); 
 	var dt = (curr - last)/ 1000.0;
 	//console.log(dt);
 	last = curr;
-	
+
 	checkCollisions(dt);
-	
+	//update Sectors, set flag false
+	checkSectors(dt);
 	var pack = [];
+	var locSectors = null;
 	for(var play in PLAYER_LIST){
         var playr = PLAYER_LIST[play];
 		if(playr.ship != null){
 			playr.updatePosition(dt);
+			//check player location
 			var myPos = playr.ship.getPosition();
+			var secX = myPos.x / 1000; //sector width
+			var secY = myPos.y / 1000; //sector height
+			var mySector = generateUnique(secX, secY);
+			locSectors = getLocalSectors(secX, secY);
 			var myDir = playr.ship.getDirection();
 			var myHue = playr.ship.getHue();
 			pack.push({
 				id: playr.id,
+				sector: mySector,
+				//localSectors: secs,
 				posX: myPos.x,
 				posY: myPos.y,
 				dirX: myDir.x,
@@ -227,9 +290,12 @@ setInterval(function(){
 		};
 	};
 	for(var sock in SOCKET_LIST){
+		//find the sector current ship is in, send the surrounding sector information
 		var socket = SOCKET_LIST[sock];
+		socket.emit('ClientUpdateSectors', locSectors);
 		socket.emit('ClientUpdatePosition', pack);
 		socket.emit('ClientDeleteProjectiles', delPack);
-		socket.emit('ClientUpdateProjectiles',proPack);
+		socket.emit('ClientUpdateProjectiles', proPack);
 	};
+	
 }, 1000/60);

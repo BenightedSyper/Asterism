@@ -17,6 +17,27 @@ var CelestialObject = function(_pos){
     this.entity.calcAABB();
 	this.entity.addTag("Planet");
 	//this.entity.addCollisionTag("Player");
+	this.orbit = false;
+	this.orbitRadius = 0;
+	this.orbitPeriod = 0;
+	this.orbitOffset = 0;
+	this.orbitStep = 0;
+	this.orbitCurrent = 0;
+	this.orbitTarget = this.entity.position;
+};
+CelestialObject.prototype.setOrbit = function(_rad, _per, _off){
+	this.orbit = true;
+	this.orbitRadius = _rad;
+	this.orbitPeriod = _per;
+	this.orbitOffset = _off;
+	this.orbitStep = Math.PI * 2 / this.orbitPeriod;
+	this.orbitCurrent = this.orbitOffset;
+	this.clampOrbit();
+};
+CelestialObject.prototype.clampOrbit = function(){
+	if(this.orbitCurrent > this.orbitPeriod){
+		this.orbitCurrent -= this.orbitPeriod;
+	};
 };
 CelestialObject.prototype.setPosition = function(_pos){
     this.entity.position = _pos;
@@ -45,6 +66,15 @@ CelestialObject.prototype.getInputAccel = function(){
 };
 CelestialObject.prototype.update = function(_dt){
     //this.entity.update(_dt);
+	if(this.orbit){
+		this.orbitCurrent += _dt;
+		this.clampOrbit();
+		var orbX = Math.sin(this.orbitCurrent * this.orbitStep) + this.orbitTarget.x;
+		var orbY = Math.cos(this.orbitCurrent * this.orbitStep) + this.orbitTarget.y;
+		this.entity.position = new Vector2D(orbX, orbY);
+	};
+	//cos(0) = 1 = y
+	//sin(0) = 0 = x
 };
 CelestialObject.fromJSON = function(_json){
 	var jsonCel = _json.celobj;
@@ -53,6 +83,14 @@ CelestialObject.fromJSON = function(_json){
 		co.push(new CelestialObject(new Vector2D(0,0)));
 		co[i].entity = Entity2D.fromJSON(jsonCel[i].entity);
 		co[i].hue = jsonCel[i].hue;
+		if(jsonCel[i].orbit){
+			co[i].orbit = true;
+			co[i].orbitRadius = jsonCel[i].orbit;
+			co[i].orbitPeriod = jsonCel[i].orbitPeriod;
+			co[i].orbitOffset = jsonCel[i].orbitOffset;
+			co[i].orbitStep = Math.PI * 2 / jsonCel[i].orbitPeriod;
+			co[i].orbitCurrent = jsonCel[i].orbitOffset;
+		};
 	};
 	//var co = new CelestialObject(new Vector2D(0,0));
 	//co.entity = Entity2D.fromJSON(jsonCel.entity);

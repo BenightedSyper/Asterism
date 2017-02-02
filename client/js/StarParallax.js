@@ -43,7 +43,7 @@ StarParallax.prototype.render = function(_ctx, _viewPort){
 	_ctx.restore();
 };
 StarParallax.fromJSON = function(_json){
-	var jsonStars = _json.stars;
+	var jsonStars = _json.StarPar;
 	var sp = new StarParallax(jsonStars.pos, jsonStars.seed);
 	sp.setStars(jsonStars.stars);
 	return sp;
