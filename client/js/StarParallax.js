@@ -36,8 +36,8 @@ StarParallax.prototype.render = function(_ctx, _viewPort){
 	_ctx.save();
 	for(var i = 0; i < this.size; i++){
 		_ctx.fillStyle = "hsl("+ this.stars[i].hue +",40%,"+ this.stars[i].dis +"%)";
-		_ctx.fillRect(this.stars[i].pos.x - (xOffset * (100 / this.stars[i].dis)), 
-					  this.stars[i].pos.y - (yOffset * (100 / this.stars[i].dis)) ,
+		_ctx.fillRect(this.pos.x * 1000 + this.stars[i].pos.x - (xOffset * (100 / this.stars[i].dis)), 
+					  this.pos.y * 1000 + this.stars[i].pos.y - (yOffset * (100 / this.stars[i].dis)) ,
 					  2,2);// size based on distance
 	};
 	_ctx.restore();
@@ -46,5 +46,10 @@ StarParallax.fromJSON = function(_json){
 	var jsonStars = _json.StarPar;
 	var sp = new StarParallax(jsonStars.pos, jsonStars.seed);
 	sp.setStars(jsonStars.stars);
+	return sp;
+};
+StarParallax.fromStarParallax = function(_sp){
+	var sp = new StarParallax(_sp.pos, _sp.seed);
+	sp.setStars(_sp.stars);
 	return sp;
 };

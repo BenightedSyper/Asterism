@@ -44,6 +44,15 @@ function Page_OnResize(){
     //canvas.width = window.innerWidth*0.95;
     //canvas.height = window.innerHeight*0.9;
 }
+function sectorFromSector(_sec){
+	var sector = {
+		StarPar : _sec.StarPar,
+		CelesObjs : _sec.celobj,
+		x : _sec.x,
+		y : _sec.y
+		};
+	return sector;
+};
 function Page_OnLoad(){
     canvas = document.createElement("canvas");
 	canvas.position = 'absolute';
@@ -66,12 +75,22 @@ function Page_OnLoad(){
 	});
 	socket.on('ClientSpawnShip',function(data){
 		Player.id = data.id
+		Player.localSectors = {N: {StarPar:null, celobj:null}, 
+							   NE:{StarPar:null, celobj:null}, 
+							   E: {StarPar:null, celobj:null}, 
+							   SE:{StarPar:null, celobj:null}, 
+							   S: {StarPar:null, celobj:null}, 
+							   SW:{StarPar:null, celobj:null}, 
+							   W: {StarPar:null, celobj:null}, 
+							   NW:{StarPar:null, celobj:null}, 
+							   Curr:{StarPar:null, celobj:null} 
+							   };
 		PlayerShip = Ship.fromJSON(JSON.parse(data.ship));
 		viewPort.follow(PlayerShip.entity,canvasWidth/8,canvasHeight/8);
 	});
 	socket.on('ClientUpdatePosition', function(data){
 		for(var i = 0 ; i < data.length; i++){
-			//console.log(data[i].id);
+			
 			if(data[i].id == Player.id){
 				//my ship
 				//console.log(data[i].posX + " " + data[i].posY);
@@ -79,8 +98,29 @@ function Page_OnLoad(){
 				PlayerShip.setDirection(new Vector2D(data[i].dirX, data[i].dirY));
 				PlayerShip.setHue(data[i].hue);
 				Player.mySector = data[i].sector;
-				//Player.localSectors = data[i].localSectors;
-				Player.near = data[i].near;
+				if(data[i].sectorChange){
+					//console.log(data[i].sectorChange);
+					//console.log(data[i].localSectors);
+					var temp = JSON.parse(data[i].localSectors);
+					//console.log(temp);
+					try{
+						Player.localSectors.NW.StarPar = StarParallax.fromStarParallax(temp.NW.StarPar);//make new starpars from this
+						Player.localSectors.N.StarPar  = StarParallax.fromStarParallax(temp.N.StarPar);
+						Player.localSectors.NE.StarPar = StarParallax.fromStarParallax(temp.NE.StarPar);
+						Player.localSectors.E.StarPar  = StarParallax.fromStarParallax(temp.E.StarPar);
+						Player.localSectors.SE.StarPar = StarParallax.fromStarParallax(temp.SE.StarPar);
+						Player.localSectors.S.StarPar  = StarParallax.fromStarParallax(temp.S.StarPar);
+						Player.localSectors.SW.StarPar = StarParallax.fromStarParallax(temp.SW.StarPar);
+						Player.localSectors.W.StarPar  = StarParallax.fromStarParallax(temp.W.StarPar);
+						Player.localSectors.Curr.StarPar = StarParallax.fromStarParallax(temp.Curr.StarPar);
+					}catch(error){
+						console.log(temp);
+						console.log(error);
+						//retry to grab sectors that failed
+					};
+				};
+				
+				//Player.near = data[i].near;
 			}else{
 				//other ships
 				if(allShips[data[i].id] == null){
@@ -99,7 +139,7 @@ function Page_OnLoad(){
 		};
 	});
 	socket.on('ClientUpdateSectors', function(data){
-		console.log(data);
+		//console.log(data);
 		Player.localSectors = data;
 	});
 	socket.on('ClientDeleteProjectiles', function(data){
@@ -108,30 +148,28 @@ function Page_OnLoad(){
 		};
 	});
 	socket.on('ClientUpdateSectorStars', function(data){
-		//console.log("sector StarPar");
-		//console.log(data.StarPar);
 		if(SECTORS[data.uni] != null){
 			SECTORS[data.uni].StarPar = StarParallax.fromJSON(JSON.parse(data.StarPar));
 		}else{
 			SECTORS[data.uni] = {
-			StarPar : StarParallax.fromJSON(JSON.parse(data.StarPar))
+			StarPar : StarParallax.fromJSON(JSON.parse(data.StarPar)),
+			CelesObjs : null,
+			x : data.x,
+			y : data.y
 			};
 		}
-		//StarPar = StarParallax.fromJSON(JSON.parse(data.StarPar));
 	});
 	socket.on('ClientUpdateCelestialObjects', function(data){//TODO currently doesnt use JSON
-		//console.log(data);
 		if(SECTORS[data.uni] != null){
 			SECTORS[data.uni].CelesObjs = CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/);
 		}else{
 			SECTORS[data.uni] = {
-			CelesObjs : CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/)
+			StarPar : null,
+			CelesObjs : CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/),
+			x : data.x,
+			y : data.y
 			};
 		}
-		//console.log(SECTORS[data.uni]);
-		//for(var i = 0; i < data.length; i++){
-			//CelesObjs = CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/);
-		//};
 	});
 	socket.on('ClientUpdateProjectiles', function(data){
 		for(var i = 0 ; i < data.length; i++){
@@ -220,14 +258,44 @@ function render(){
 
 	
 	if(Player.mySector != null){
-		//console.log(SECTORS);
-		SECTORS[Player.mySector].StarPar.render(ctx, viewPort.getViewPort());
+		//console.log(PlayerShip.getPosition());
+		ctx.font="30px Arial";
+		ctx.fillText(PlayerShip.getPosition(),10,50);
+		SECTORS[Player.mySector].StarPar.render(ctx, viewPort.getViewPort());//needs to be replaced with localSectors.Curr
 		for(var i = 0; i < SECTORS[Player.mySector].CelesObjs.length; i++){
 			SECTORS[Player.mySector].CelesObjs[i].render(ctx, viewPort.getViewPort());
 		}
 	};
-	/*
+	
 	if(Player.localSectors != null){
+		//console.log(Player.localSectors);
+		if(Player.localSectors.N != null){
+			if(Player.localSectors.NW.StarPar != null){
+				//console.log(Player.localSectors.NW);
+				Player.localSectors.NW.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.N.StarPar != null){
+				Player.localSectors.N.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.NE.StarPar != null){
+				Player.localSectors.NE.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.E.StarPar != null){
+				Player.localSectors.E.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.SE.StarPar != null){
+				Player.localSectors.SE.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.S.StarPar != null){
+				Player.localSectors.S.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.SW.StarPar != null){
+				Player.localSectors.SW.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.W.StarPar != null){
+				Player.localSectors.W.StarPar.render(ctx, viewPort.getViewPort());
+			};
+		};
 		
 		//console.log(SECTORS);
 		//SECTORS[Player.mySector].StarPar.render(ctx, viewPort.getViewPort());
@@ -235,7 +303,7 @@ function render(){
 		//	SECTORS[Player.mySector].CelesObjs[i].render(ctx, viewPort.getViewPort());
 		//}
 	};
-	*/
+	
 	
 	/*if(StarPar != null){//needs filtering by viewport
 		StarPar.render(ctx, viewPort.getViewPort());
@@ -260,6 +328,8 @@ function render(){
         //enemies[i].render(ctx, viewPort.getViewPort());
     //};
     
+	
+	
 	if(DEBUGLINE != null){
 		DEBUGLINE.render(ctx, viewPort.getViewPort());
 	};
