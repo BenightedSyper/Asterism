@@ -18,6 +18,8 @@ var Ship = function(_pos){
                             new LineSegment(new Vector2D(15,-15), new Vector2D(0,-10))];
     this.setRandomHue();
     this.entity.calcAABB();
+	this.entity.addTag("Player");
+	this.entity.addCollisionTag("Player");
 };
 Ship.prototype.setRandomHue = function(){//FIX ME
 	var temp = Math.floor((Math.random() * 360) + 1)

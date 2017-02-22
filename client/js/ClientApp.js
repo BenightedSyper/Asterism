@@ -22,6 +22,11 @@ var shotRate = 150;
 var allShips = [];
 var enemyCollisions = [];
 var projectileCollisions = [];
+var StarPar;
+var SECTORS = [];
+var CelesObjs = [];
+
+var DEBUGLINE;
 
 // A cross-browser requestAnimationFrame
 // See https://hacks.mozilla.org/2011/08/animating-with-javascript-from-setinterval-to-requestanimationframe/
@@ -39,6 +44,15 @@ function Page_OnResize(){
     //canvas.width = window.innerWidth*0.95;
     //canvas.height = window.innerHeight*0.9;
 }
+function sectorFromSector(_sec){
+	var sector = {
+		StarPar : _sec.StarPar,
+		CelesObjs : _sec.celobj,
+		x : _sec.x,
+		y : _sec.y
+		};
+	return sector;
+};
 function Page_OnLoad(){
     canvas = document.createElement("canvas");
 	canvas.position = 'absolute';
@@ -54,15 +68,59 @@ function Page_OnLoad(){
     document.body.appendChild(canvas);
 
 	socket = io();
+	socket.emit('ServerLogIn',{
+		userName:"test",
+		userPass:"password",
+		userInfo:1
+	});
+	socket.on('ClientSpawnShip',function(data){
+		Player.id = data.id
+		Player.localSectors = {N: {StarPar:null, celobj:null}, 
+							   NE:{StarPar:null, celobj:null}, 
+							   E: {StarPar:null, celobj:null}, 
+							   SE:{StarPar:null, celobj:null}, 
+							   S: {StarPar:null, celobj:null}, 
+							   SW:{StarPar:null, celobj:null}, 
+							   W: {StarPar:null, celobj:null}, 
+							   NW:{StarPar:null, celobj:null}, 
+							   Curr:{StarPar:null, celobj:null} 
+							   };
+		PlayerShip = Ship.fromJSON(JSON.parse(data.ship));
+		viewPort.follow(PlayerShip.entity,canvasWidth/8,canvasHeight/8);
+	});
 	socket.on('ClientUpdatePosition', function(data){
 		for(var i = 0 ; i < data.length; i++){
-			//console.log(data[i].id);
+			
 			if(data[i].id == Player.id){
 				//my ship
 				//console.log(data[i].posX + " " + data[i].posY);
 				PlayerShip.setPosition(new Vector2D(data[i].posX, data[i].posY));
 				PlayerShip.setDirection(new Vector2D(data[i].dirX, data[i].dirY));
 				PlayerShip.setHue(data[i].hue);
+				Player.mySector = data[i].sector;
+				if(data[i].sectorChange){
+					//console.log(data[i].sectorChange);
+					//console.log(data[i].localSectors);
+					var temp = JSON.parse(data[i].localSectors);
+					//console.log(temp);
+					try{
+						Player.localSectors.NW.StarPar = StarParallax.fromStarParallax(temp.NW.StarPar);//make new starpars from this
+						Player.localSectors.N.StarPar  = StarParallax.fromStarParallax(temp.N.StarPar);
+						Player.localSectors.NE.StarPar = StarParallax.fromStarParallax(temp.NE.StarPar);
+						Player.localSectors.E.StarPar  = StarParallax.fromStarParallax(temp.E.StarPar);
+						Player.localSectors.SE.StarPar = StarParallax.fromStarParallax(temp.SE.StarPar);
+						Player.localSectors.S.StarPar  = StarParallax.fromStarParallax(temp.S.StarPar);
+						Player.localSectors.SW.StarPar = StarParallax.fromStarParallax(temp.SW.StarPar);
+						Player.localSectors.W.StarPar  = StarParallax.fromStarParallax(temp.W.StarPar);
+						Player.localSectors.Curr.StarPar = StarParallax.fromStarParallax(temp.Curr.StarPar);
+					}catch(error){
+						console.log(temp);
+						console.log(error);
+						//retry to grab sectors that failed
+					};
+				};
+				
+				//Player.near = data[i].near;
 			}else{
 				//other ships
 				if(allShips[data[i].id] == null){
@@ -80,10 +138,38 @@ function Page_OnLoad(){
 			//console.log(data[i].pos.x);
 		};
 	});
+	socket.on('ClientUpdateSectors', function(data){
+		//console.log(data);
+		Player.localSectors = data;
+	});
 	socket.on('ClientDeleteProjectiles', function(data){
 		for(var i = 0 ; i < data.length; i++){
 			delete projectiles[data[i].id];
 		};
+	});
+	socket.on('ClientUpdateSectorStars', function(data){
+		if(SECTORS[data.uni] != null){
+			SECTORS[data.uni].StarPar = StarParallax.fromJSON(JSON.parse(data.StarPar));
+		}else{
+			SECTORS[data.uni] = {
+			StarPar : StarParallax.fromJSON(JSON.parse(data.StarPar)),
+			CelesObjs : null,
+			x : data.x,
+			y : data.y
+			};
+		}
+	});
+	socket.on('ClientUpdateCelestialObjects', function(data){//TODO currently doesnt use JSON
+		if(SECTORS[data.uni] != null){
+			SECTORS[data.uni].CelesObjs = CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/);
+		}else{
+			SECTORS[data.uni] = {
+			StarPar : null,
+			CelesObjs : CelestialObject.fromJSON(/*JSON.parse(*/data.sector/*)*/),
+			x : data.x,
+			y : data.y
+			};
+		}
 	});
 	socket.on('ClientUpdateProjectiles', function(data){
 		for(var i = 0 ; i < data.length; i++){
@@ -110,22 +196,14 @@ function Page_OnLoad(){
 	socket.on('ClientDebug',function(data){
 			console.log(data);
 	});
-	socket.emit('ServerLogIn',{
-		userName:"test",
-		userPass:"password",
-		userInfo:1
-	});
-	socket.on('ClientSpawnShip',function(data){
-		//console.log(data.id);
-		//console.log(JSON.parse(data));
-		Player.id = data.id
-		PlayerShip = Ship.fromJSON(JSON.parse(data.ship));
-		//socket.emit('ServerDebug',"" + PlayerShip.getHue());
-	});
+	
+	
 	socket.on('ClientDisconnect', function(data){
 		//console.log(data);
 		delete allShips[data];
 	});
+	
+	//StarPar = new StarParallax(new Vector2D(0,0), 0);
     //PlayerShip = new Ship(new Vector2D(canvas.width/2, canvas.height/2));
     //PlayerShip.entity.collisionType = 1;
     //PlayerShip.entity.calcAABB(); 
@@ -168,6 +246,7 @@ function update(dt){
     handleInput(dt);
     checkCollisions(dt);
     updateEntities(dt);
+	viewPort.update(dt);
 };
 
 function render(){
@@ -177,30 +256,86 @@ function render(){
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.restore();
 
-    //viewPort.render(ctx);
-    //lineSeg.render(ctx, viewPort.getViewPort());
-    if(PlayerShip != null){
-		PlayerShip.render(ctx, viewPort.getViewPort());
-	};
-	renderAllShips(ctx);
 	
-
-    //wallEnt.render(ctx, viewPort.getViewPort());
-
-    for(var i = enemies.length - 1; i >= 0; i--){
-        //enemies[i].render(ctx, viewPort.getViewPort());
-    };
-    
-    for(var i = projectiles.length - 1; i >= 0; i--){
+	if(Player.mySector != null){
+		//console.log(PlayerShip.getPosition());
+		ctx.font="30px Arial";
+		ctx.fillText(PlayerShip.getPosition(),10,50);
+		SECTORS[Player.mySector].StarPar.render(ctx, viewPort.getViewPort());//needs to be replaced with localSectors.Curr
+		for(var i = 0; i < SECTORS[Player.mySector].CelesObjs.length; i++){
+			SECTORS[Player.mySector].CelesObjs[i].render(ctx, viewPort.getViewPort());
+		}
+	};
+	
+	if(Player.localSectors != null){
+		//console.log(Player.localSectors);
+		if(Player.localSectors.N != null){
+			if(Player.localSectors.NW.StarPar != null){
+				//console.log(Player.localSectors.NW);
+				Player.localSectors.NW.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.N.StarPar != null){
+				Player.localSectors.N.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.NE.StarPar != null){
+				Player.localSectors.NE.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.E.StarPar != null){
+				Player.localSectors.E.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.SE.StarPar != null){
+				Player.localSectors.SE.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.S.StarPar != null){
+				Player.localSectors.S.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.SW.StarPar != null){
+				Player.localSectors.SW.StarPar.render(ctx, viewPort.getViewPort());
+			};
+			if(Player.localSectors.W.StarPar != null){
+				Player.localSectors.W.StarPar.render(ctx, viewPort.getViewPort());
+			};
+		};
+		
+		//console.log(SECTORS);
+		//SECTORS[Player.mySector].StarPar.render(ctx, viewPort.getViewPort());
+		//for(var i = 0; i < SECTORS[Player.mySector].CelesObjs.length; i++){
+		//	SECTORS[Player.mySector].CelesObjs[i].render(ctx, viewPort.getViewPort());
+		//}
+	};
+	
+	
+	/*if(StarPar != null){//needs filtering by viewport
+		StarPar.render(ctx, viewPort.getViewPort());
+	};*/
+	
+	/*for(var i = 0; i < CelesObjs.length; i++){
+		CelesObjs[i].render(ctx, viewPort.getViewPort());
+	};*/
+	
+	for(var i = projectiles.length - 1; i >= 0; i--){
 		if(projectiles[i] != null){
 			projectiles[i].render(ctx, viewPort.getViewPort());
 		};
     };
+	
+    if(PlayerShip != null){
+		PlayerShip.render(ctx, viewPort.getViewPort());
+	};
+	renderAllShips(ctx);
+
+    //for(var i = enemies.length - 1; i >= 0; i--){
+        //enemies[i].render(ctx, viewPort.getViewPort());
+    //};
+    
+	
+	
+	if(DEBUGLINE != null){
+		DEBUGLINE.render(ctx, viewPort.getViewPort());
+	};
 };
 function renderAllShips(_ctx){
-	//console.log(allShips.length);
 	allShips.forEach(function(_el, _in, _ar){
-		//console.log(_el);
 		_el.render(_ctx, viewPort.getViewPort());
 	});
 };
@@ -245,10 +380,13 @@ function mouseMoveEvent(_evt){
 function mouseDownEvent(_evt){
     if(_evt.button == 0){//left mouse = 0, middle = 1, right = 2;
 		//emit to server with direction of fire
-		var tarVec = PlayerShip.getPosition();
-		tarVec.add(viewPort.getPosition());
-		tarVec = mousePosition.subtract(tarVec);
-		socket.emit('ServerFireWeapon', { x: tarVec.x, y: tarVec.y});
+		// var tarVec = PlayerShip.getPosition();
+		// tarVec = new Vector2D(tarVec.x, tarVec.y)
+		// tarVec.addEquals(viewPort.getPosition());
+		// tarVec = mousePosition.subtract(tarVec);
+		tarVec = new LineSegment(PlayerShip.getPosition(),mousePosition.add(viewPort.getPosition()), 0);
+		socket.emit('ServerFireWeapon', { x: tarVec.vector.x, y: tarVec.vector.y});
+		//DEBUGLINE = new LineSegment(PlayerShip.getPosition(),mousePosition.add(viewPort.getPosition()), 0);
 		//PlayerShip.fire(projectiles, viewPort.getViewPort());
         //lineSeg.hue = Math.floor((Math.random() * 360) + 1);
     };
